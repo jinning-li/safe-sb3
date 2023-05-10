@@ -53,8 +53,10 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
         self.info_keywords = info_keywords
         self.allow_early_resets = allow_early_resets
         self.rewards: List[float] = []
+        self.costs: List[float] = []
         self.needs_reset = True
         self.episode_returns: List[float] = []
+        self.episode_costs: List[float] = []
         self.episode_lengths: List[int] = []
         self.episode_times: List[float] = []
         self.total_steps = 0
@@ -74,6 +76,7 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
                 "wrap your env with Monitor(env, path, allow_early_resets=True)"
             )
         self.rewards = []
+        self.costs = []
         self.needs_reset = False
         for key in self.reset_keywords:
             value = kwargs.get(key)
@@ -93,6 +96,7 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
             raise RuntimeError("Tried to step environment that needs reset")
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.rewards.append(float(reward))
+        self.costs.append(info.get("cost"))
         if terminated or truncated:
             self.needs_reset = True
             ep_rew = sum(self.rewards)
@@ -100,6 +104,10 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
             ep_info = {"r": round(ep_rew, 6), "l": ep_len, "t": round(time.time() - self.t_start, 6)}
             for key in self.info_keywords:
                 ep_info[key] = info[key]
+            if info.get("cost") is not None:
+                ep_cost = sum(self.costs)
+                ep_info["c"] = round(ep_cost, 6)
+                self.episode_costs.append(ep_cost)
             self.episode_returns.append(ep_rew)
             self.episode_lengths.append(ep_len)
             self.episode_times.append(time.time() - self.t_start)
@@ -133,6 +141,14 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
         :return:
         """
         return self.episode_returns
+    
+    def get_episode_costs(self) -> List[float]:
+        """
+        Returns the costs of all the episodes
+
+        :return:
+        """
+        return self.episode_costs
 
     def get_episode_lengths(self) -> List[int]:
         """
