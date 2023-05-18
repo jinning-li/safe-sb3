@@ -1,5 +1,6 @@
 import sys
 import time
+import os
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
@@ -100,6 +101,7 @@ class OnPolicyAlgorithm(BaseAlgorithm):
         self.ent_coef = ent_coef
         self.vf_coef = vf_coef
         self.max_grad_norm = max_grad_norm
+        self.max_epi_rew = 0
 
         if _init_setup_model:
             self._setup_model()
@@ -274,6 +276,9 @@ class OnPolicyAlgorithm(BaseAlgorithm):
                     rew_mean = safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer])
                     self.logger.record("rollout/ep_rew_mean", rew_mean)
                     self.logger.record("rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]))
+                    if rew_mean > self.max_epi_rew:
+                        self.save(os.path.join(self.logger.dir, "model.pt"))
+                        self.max_epi_rew = rew_mean
                     if self.ep_info_buffer[0].get("c") is not None:
                         cost_mean = safe_mean([ep_info["c"] for ep_info in self.ep_info_buffer])
                         self.logger.record("rollout/ep_cost_mean", cost_mean)

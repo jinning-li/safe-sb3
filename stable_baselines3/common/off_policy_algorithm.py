@@ -1,4 +1,5 @@
 import io
+import os
 import pathlib
 import sys
 import time
@@ -144,6 +145,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             self.policy_kwargs["use_sde"] = self.use_sde
         # For gSDE only
         self.use_sde_at_warmup = use_sde_at_warmup
+        self.max_epi_rew = 0
 
     def _convert_train_freq(self) -> None:
         """
@@ -397,8 +399,17 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         fps = int((self.num_timesteps - self._num_timesteps_at_start) / time_elapsed)
         self.logger.record("time/episodes", self._episode_num, exclude="tensorboard")
         if len(self.ep_info_buffer) > 0 and len(self.ep_info_buffer[0]) > 0:
-            self.logger.record("rollout/ep_rew_mean", safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer]))
+            rew_mean = safe_mean([ep_info["r"] for ep_info in self.ep_info_buffer])
+            self.logger.record("rollout/ep_rew_mean", rew_mean)
             self.logger.record("rollout/ep_len_mean", safe_mean([ep_info["l"] for ep_info in self.ep_info_buffer]))
+            if rew_mean > self.max_epi_rew:
+                self.save(os.path.join(self.logger.dir, "model.pt"))
+                self.max_epi_rew = rew_mean
+            if self.ep_info_buffer[0].get("c") is not None:
+                cost_mean = safe_mean([ep_info["c"] for ep_info in self.ep_info_buffer])
+                self.logger.record("rollout/ep_cost_mean", cost_mean)
+                lamb = self.env.envs[0].lamb
+                self.logger.record("rollout/ep_actual_rew_mean", rew_mean + lamb * cost_mean)
         self.logger.record("time/fps", fps)
         self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
         self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
