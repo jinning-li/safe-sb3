@@ -147,6 +147,8 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         self.use_sde_at_warmup = use_sde_at_warmup
         self.max_epi_rew = 0
 
+        self.weight_controller = LagrangianPIDController(KP=1.0, KI=0.003, KD=0.001, thres=10.)
+
     def _convert_train_freq(self) -> None:
         """
         Convert `train_freq` parameter (int or tuple)
@@ -310,6 +312,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
 
         callback.on_training_start(locals(), globals())
 
+        g_steps = 0
         while self.num_timesteps < total_timesteps:
             rollout = self.collect_rollouts(
                 self.env,
@@ -331,7 +334,14 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 # Special case when the user passes `gradient_steps=0`
                 if gradient_steps > 0:
                     self.train(batch_size=self.batch_size, gradient_steps=gradient_steps)
-
+                    g_steps += gradient_steps
+                    if g_steps % 1000 == 0:
+                        # TODO: add PID to control cost/reward weight
+                        cost = self.env.envs[0].get_episode_costs()[-10:]
+                        cost = th.tensor(cost)
+                        with th.no_grad():
+                            lamb = self.weight_controller.control(cost)
+                        self.env.envs[0].env.lamb = lamb.numpy().item()
         callback.on_training_end()
 
         return self
@@ -408,8 +418,10 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             if self.ep_info_buffer[0].get("c") is not None:
                 cost_mean = safe_mean([ep_info["c"] for ep_info in self.ep_info_buffer])
                 self.logger.record("rollout/ep_cost_mean", cost_mean)
-                lamb = self.env.envs[0].lamb
-                self.logger.record("rollout/ep_actual_rew_mean", rew_mean + lamb * cost_mean)
+                lamb = self.env.envs[0].env.lamb
+                ar_mean = safe_mean([ep_info["ar"] for ep_info in self.ep_info_buffer])
+                self.logger.record("rollout/ep_actual_rew_mean", ar_mean)
+            self.logger.record("rollout/cost_reward_weight", self.env.envs[0].env.lamb)
         self.logger.record("time/fps", fps)
         self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
         self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
@@ -604,3 +616,32 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             self.guidance_steps = env_max_steps * 0.9 ** self.num_timesteps 
             # check this random switching is better in the paper
     
+
+from torch.nn.functional import relu
+
+
+class LagrangianPIDController:
+    '''
+    Lagrangian multiplier controller
+    '''
+    def __init__(self, KP, KI, KD, thres, per_state=True) -> None:
+        super().__init__()
+        self.KP = KP
+        self.KI = KI
+        self.KD = KD
+        self.thres = thres
+        self.error_old = 0
+        self.error_integral = 0
+
+    def control(self, qc):
+        '''
+        @param qc [batch,]
+        '''
+        error_new = th.mean(qc - self.thres)  # [batch]
+        error_diff = relu(error_new - self.error_old)
+        self.error_integral = th.mean(relu(self.error_integral + error_new))
+        self.error_old = error_new
+
+        multiplier = relu(self.KP * relu(error_new) + self.KI * self.error_integral +
+                          self.KD * error_diff)
+        return th.mean(multiplier)
