@@ -8,6 +8,7 @@ from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 from stable_baselines3.ppo import PPO
 from stable_baselines3.bc import BC
 from stable_baselines3.sac import SAC
+from stable_baselines3.sac_lag import SACLag
 from stable_baselines3.td3 import TD3
 from stable_baselines3.iql import IQL
 
@@ -31,6 +32,7 @@ __all__ = [
     "PPO",
     "BC",
     "SAC",
+    "SACLag",
     "IQL",
     "TD3",
     "HerReplayBuffer",

@@ -54,6 +54,7 @@ class ReplayBufferSamples(NamedTuple):
     next_observations: th.Tensor
     dones: th.Tensor
     rewards: th.Tensor
+    costs: th.Tensor
 
 
 class DictReplayBufferSamples(NamedTuple):

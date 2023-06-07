@@ -335,13 +335,13 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 if gradient_steps > 0:
                     self.train(batch_size=self.batch_size, gradient_steps=gradient_steps)
                     g_steps += gradient_steps
-                    if g_steps % 1000 == 0:
-                        # TODO: add PID to control cost/reward weight
-                        cost = self.env.envs[0].get_episode_costs()[-10:]
-                        cost = th.tensor(cost)
-                        with th.no_grad():
-                            lamb = self.weight_controller.control(cost)
-                        self.env.envs[0].env.lamb = lamb.numpy().item()
+                    # if g_steps % 1000 == 0:
+                    #     # TODO: add PID to control cost/reward weight
+                    #     cost = self.env.envs[0].get_episode_costs()[-10:]
+                    #     cost = th.tensor(cost)
+                    #     with th.no_grad():
+                    #         lamb = self.weight_controller.control(cost)
+                    #     self.env.envs[0].env.lamb = lamb.numpy().item()
         callback.on_training_end()
 
         return self
