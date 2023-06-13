@@ -50,6 +50,7 @@ class BC(OffPolicyAlgorithm):
         verbose: int = 0,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
+        max_grad_norm: float = 0.5,
         _init_setup_model: bool = True,
     ):
         super().__init__(
@@ -79,6 +80,7 @@ class BC(OffPolicyAlgorithm):
             supported_action_spaces=(spaces.Box,),
             support_multi_env=True,
         )
+        self.max_grad_norm = max_grad_norm
         if _init_setup_model:
             self._setup_model()
 
@@ -114,6 +116,7 @@ class BC(OffPolicyAlgorithm):
             # Optimize the actor
             self.policy.optimizer.zero_grad()
             actor_loss.backward()
+            th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
             self.policy.optimizer.step()
 
         self._n_updates += gradient_steps
