@@ -7,5 +7,5 @@ We adapted this repo to include Safe Reinforcement Learning algorithms, e.g., SA
 For example usage, please check out the directory `examples/`. Run the following command in terminal for a demo of SAC.
 
 ```shell
-python examples/run_sac.py
+python examples/run_bc.py -d examples/ppo_safexp_cargoal1_v0.h5py -e Safexp-CarGoal1-v0 -es 0
 ```
