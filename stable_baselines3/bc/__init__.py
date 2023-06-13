@@ -1,4 +1,7 @@
-from stable_baselines3.ppo.policies import CnnPolicy, MlpPolicy, MultiInputPolicy
+from stable_baselines3.common.policies import ActorCriticPolicy
+# from stable_baselines3.bc.bc_old import BC
 from stable_baselines3.bc.bc import BC
+MlpPolicy = ActorCriticPolicy
 
-__all__ = ["CnnPolicy", "MlpPolicy", "MultiInputPolicy", "PPO"]
+
+__all__ = ["MlpPolicy", "BC"]

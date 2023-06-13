@@ -55,7 +55,7 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
         self.rewards: List[float] = []
         self.costs: List[float] = []
         self.actual_res: List[float] = []
-        self.weighted_costs: List[float] = []
+        # self.weighted_costs: List[float] = []
         self.needs_reset = True
         self.episode_returns: List[float] = []
         self.episode_costs: List[float] = []
@@ -79,7 +79,7 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
             )
         self.rewards = []
         self.costs = []
-        self.weighted_costs = []
+        # self.weighted_costs = []
         self.actual_res = []
         self.needs_reset = False
         for key in self.reset_keywords:
@@ -100,9 +100,9 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
             raise RuntimeError("Tried to step environment that needs reset")
         observation, reward, terminated, truncated, info = self.env.step(action)
         self.rewards.append(float(reward))
-        self.costs.append(info.get("cost"))
-        self.actual_res.append(info.get("re"))
-        self.weighted_costs.append(self.lamb * info.get("cost"))
+        self.costs.append(info.get("cost", -1.))
+        self.actual_res.append(info.get("re", float(reward)))
+        # self.weighted_costs.append(self.lamb * info.get("cost"))
         if terminated or truncated:
             self.needs_reset = True
             ep_rew = sum(self.rewards)
@@ -112,10 +112,10 @@ class Monitor(gym.Wrapper[ObsType, ActType, ObsType, ActType]):
                 ep_info[key] = info[key]
             if info.get("cost") is not None:
                 ep_cost = sum(self.costs)
-                ep_weighted_cost = sum(self.weighted_costs)
+                # ep_weighted_cost = sum(self.weighted_costs)
                 ep_actual_re = sum(self.actual_res)
                 ep_info["c"] = round(ep_cost, 6)
-                ep_info["wc"] = round(ep_weighted_cost, 6)
+                # ep_info["wc"] = round(ep_weighted_cost, 6)
                 ep_info["ar"] = round(ep_actual_re, 6)
                 self.episode_costs.append(ep_cost)
             self.episode_returns.append(ep_rew)

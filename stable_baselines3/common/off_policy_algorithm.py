@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 import torch as th
-from gymnasium import spaces
+from gym import spaces
 
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.buffers import DictReplayBuffer, ReplayBuffer
@@ -418,10 +418,10 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             if self.ep_info_buffer[0].get("c") is not None:
                 cost_mean = safe_mean([ep_info["c"] for ep_info in self.ep_info_buffer])
                 self.logger.record("rollout/ep_cost_mean", cost_mean)
-                lamb = self.env.envs[0].env.lamb
                 ar_mean = safe_mean([ep_info["ar"] for ep_info in self.ep_info_buffer])
                 self.logger.record("rollout/ep_actual_rew_mean", ar_mean)
-            self.logger.record("rollout/cost_reward_weight", self.env.envs[0].env.lamb)
+            if hasattr(self.env.envs[0].env, "lamb"):
+                self.logger.record("rollout/cost_reward_weight", self.env.envs[0].env.lamb)
         self.logger.record("time/fps", fps)
         self.logger.record("time/time_elapsed", int(time_elapsed), exclude="tensorboard")
         self.logger.record("time/total_timesteps", self.num_timesteps, exclude="tensorboard")
@@ -579,7 +579,9 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             self._update_info_buffer(infos, dones)
 
             # Store data in replay buffer (normalized action and unnormalized observation)
-            self._store_transition(replay_buffer, buffer_actions, new_obs, rewards, dones, infos)
+            from stable_baselines3.bc.policies import BCPolicy
+            if not isinstance(self.policy, BCPolicy):
+                self._store_transition(replay_buffer, buffer_actions, new_obs, rewards, dones, infos)
 
             self._update_current_progress_remaining(self.num_timesteps, self._total_timesteps)
 
