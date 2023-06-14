@@ -2,11 +2,12 @@ import gym
 import h5py
 import numpy as np
 import safety_gym
+import bullet_safety_gym
 import tqdm
 
-from stable_baselines3 import PPO
+from stable_baselines3 import SAC
 
-from .wrappers import AddCostToRewardEnv
+from wrappers import AddCostToRewardEnv
 
 
 def main(args):
@@ -15,9 +16,11 @@ def main(args):
     env.seed(args["env_seed"])
 
     model_dir = args["policy_load_dir"]
-    model = PPO.load(model_dir)
 
-    total_timesteps = args["steps"]
+    model = SAC("MlpPolicy", env)
+    model.set_parameters(model_dir)
+
+    total_timesteps = int(args["steps"])
 
     obs_rec = np.ndarray((0, ) + env.observation_space.shape)
     ac_rec = np.ndarray((0, ) + env.action_space.shape)

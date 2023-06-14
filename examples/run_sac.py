@@ -2,7 +2,7 @@ from stable_baselines3 import SAC
 import gym
 import safety_gym
 import bullet_safety_gym
-from .wrappers import AddCostToRewardEnv
+from wrappers import AddCostToRewardEnv
 import h5py
 import numpy as np
 import tqdm
