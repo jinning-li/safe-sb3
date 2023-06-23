@@ -16,6 +16,11 @@ _build/
 *.pth
 .pytype/
 git_rewrite_commit_history.sh
+**/**/.h5py
+**/**/.pkl
+examples/metadrive/tfrecord_9/*
+examples/metadrive/tfrecord_20/*
+
 
 # Setuptools distribution and build folders.
 /dist/
