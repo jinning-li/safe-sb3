@@ -1,6 +1,7 @@
 from stable_baselines3 import BC
 import gym
 import safety_gym
+import bullet_safety_gym
 import h5py
 import os
 from datetime import datetime
@@ -15,7 +16,7 @@ def main(args):
     experiment_name = "bc-" + env_name + "-es" + str(args["env_seed"])
     tensorboard_log = os.path.join(root_dir, experiment_name)
 
-    model = BC("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1)
+    model = BC("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1, device="cpu")
     model.learn(total_timesteps=args["steps"], data_dir=args["data_dir"])
 
     del model

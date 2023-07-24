@@ -14,6 +14,8 @@ def main(args):
     env_name = args["env"]
     env = gym.make(env_name)
     env.seed(args["env_seed"])
+    if args["random"]:
+        env.set_num_different_layouts(100)
     lamb = args["lambda"]
     env = AddCostToRewardEnv(env, lamb=lamb)
 
@@ -23,9 +25,11 @@ def main(args):
         "sac-" + env_name + "_es" + str(args["env_seed"]) 
         # + "_lam" + str(lamb) + '_' + date)
         + "_lam" + str(lamb))
+    if args["suffix"]:
+        experiment_name += f'_{args["suffix"]}'
     tensorboard_log = os.path.join(root_dir, experiment_name)
 
-    model = SAC("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1)
+    model = SAC("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1, device="cpu")
     model.learn(total_timesteps=args["steps"])
 
     del model
@@ -40,6 +44,8 @@ if __name__ == "__main__":
     parser.add_argument('--env_seed', '-es', type=int, default=3)
     parser.add_argument('--lambda', '-lam', type=float, default=1.)
     parser.add_argument('--steps', '-st', type=int, default=int(1e7))
+    parser.add_argument('--random', '-r', action='store_true', default=False)
+    parser.add_argument('--suffix', type=str, default='')
     args = parser.parse_args()
     args = vars(args)
 

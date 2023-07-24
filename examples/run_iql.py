@@ -22,7 +22,7 @@ def main(args):
         + "_lam" + str(lamb))
     tensorboard_log = os.path.join(root_dir, experiment_name)
 
-    model = IQL("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1)
+    model = IQL("MlpPolicy", env, tensorboard_log=tensorboard_log, verbose=1, device="cpu")
     model.learn(total_timesteps=args["steps"])
     model.save("iql-" + env_name + "-es" + str(args["env_seed"]))
 
