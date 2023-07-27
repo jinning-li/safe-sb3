@@ -6,23 +6,19 @@ from gymnasium import spaces
 
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.noise import ActionNoise
+from stable_baselines3.common.off_policy_algorithm import OffPolicyAlgorithm
 from stable_baselines3.common.policies import BasePolicy, ContinuousCritic
 from stable_baselines3.common.type_aliases import GymEnv, Schedule
+from stable_baselines3.iql.iql import IQL
+from stable_baselines3.iql.policies import Actor, CnnPolicy, MlpPolicy, MultiInputPolicy, SACPolicy, ValueNet
 from stable_baselines3.js_sac import utils as js_utils
-from stable_baselines3.sac.policies import Actor, CnnPolicy, MlpPolicy, MultiInputPolicy, SACPolicy
-from stable_baselines3.sac.sac import SAC
+
+SelfJumpStartIQL = TypeVar("SelfJumpStartIQL", bound="JumpStartIQL")
 
 
-SelfJumpStartSAC = TypeVar("SelfJumpStartSAC", bound="JumpStartSAC")
-
-
-class JumpStartSAC(SAC):
+class JumpStartIQL(IQL):
     """
-    Jump Start Soft Actor-Critic (SAC).
-
-    It has the same backbone as SAC. The only difference is that there is a guide (expert) policy,
-    which leads the exploration policy (the one being trained) to high reward areas.
-    The action sampling process is overwritten to adopt the guide policy.
+    Jump Start Implicit Q Learning (js-IQL).
     """
 
     policy_aliases: Dict[str, Type[BasePolicy]] = {
@@ -34,6 +30,7 @@ class JumpStartSAC(SAC):
     actor: Actor
     critic: ContinuousCritic
     critic_target: ContinuousCritic
+    value: ValueNet
 
     def __init__(
         self,
