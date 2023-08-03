@@ -607,16 +607,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         callback.on_rollout_end()
 
         return RolloutReturn(num_collected_steps * env.num_envs, num_collected_episodes, continue_training)
-
-    def is_performing_guidance(self, env_steps):
-        return env_steps < self.guidance_steps
-
-    def update_guidance_steps(self, total_timesteps):
-        if not self.jump_start: # add self.jump_start to __init__
-            self.guidance_steps = 0
-        else:  
-            self.guidance_steps = env_max_steps * 0.9 ** self.num_timesteps 
-            # check this random switching is better in the paper
     
 
 from torch.nn.functional import relu
