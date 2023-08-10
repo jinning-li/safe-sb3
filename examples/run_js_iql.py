@@ -1,3 +1,9 @@
+# Example usage:
+# The expert model dir for transformers should be the base wandb experiment
+# logdir.
+# python examples/run_js_iql.py -e Safexp-CarButton1-v0 -es 3 -d cuda:1 \
+# -emd /home/lijinning/decision-transformer/gym/wandb/run-20230810_155710-1gi0bods \
+# --use_transformer_expert -lam 0.1
 import os
 from datetime import datetime
 
@@ -34,9 +40,10 @@ def main(args):
     tensorboard_log = os.path.join(root_dir, experiment_name)
 
     if use_transformer_expert:
-        obs_mean, obs_std = js_utils.load_demo_stats(
+        loaded_stats = js_utils.load_demo_stats(
             path=args["expert_model_dir"]
         )
+        obs_mean, obs_std, reward_scale, target_return = loaded_stats
         expert_policy = js_utils.load_transformer(
             model_dir=args['expert_model_dir'], device=device
         )
@@ -50,9 +57,11 @@ def main(args):
         "MlpPolicy",
         expert_policy,
         env,
+        use_transformer_expert=use_transformer_expert,
+        target_return=target_return,
+        reward_scale=reward_scale,
         obs_mean=obs_mean,
         obs_std=obs_std,
-        use_transformer_expert=use_transformer_expert,
         tensorboard_log=tensorboard_log,
         verbose=1,
         device=device,
@@ -73,6 +82,9 @@ if __name__ == "__main__":
 
     # E.g., expert_model_dir: 'sac-Safexp-CarButton1-v0_es3_lam0.1/SAC_6'
     parser.add_argument('--expert_model_dir', '-emd', type=str, required=True)
+    parser.add_argument(
+        '--use_transformer_expert', action='store_true', default=False
+    )
 
     parser.add_argument('--lambda', '-lam', type=float, default=1.)
     parser.add_argument('--steps', '-st', type=int, default=int(1e7))

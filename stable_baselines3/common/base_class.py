@@ -430,7 +430,13 @@ class BaseAlgorithm(ABC):
             self.hist_obs = self._last_obs.reshape(1, self.obs_dim)
             self.hist_ac= np.zeros((0, self.ac_dim))
             self.hist_re = np.zeros(0)
-            self.target_return = 50.
+            if (
+                hasattr(self, 'use_transformer_expert') 
+                and self.use_transformer_expert
+            ):
+                self.target_return = np.array([[self.target_return_init]])
+            self.timesteps = np.zeros((1, 1))
+
             # pytype: enable=annotation-type-mismatch
             self._last_episode_starts = np.ones((self.env.num_envs,), dtype=bool)
             # Retrieve unnormalized observation for saving into the buffer
