@@ -40,6 +40,9 @@ class JumpStartIQL(IQL):
         expert_policy: Any,
         env: Union[GymEnv, str],
         # data_collection_env: GymEnv,
+        obs_mean: np.ndarray,
+        obs_std: np.ndarray,
+        use_transformer_expert: bool,
         guidance_timesteps: int = 500_000,
         learning_rate: Union[float, Schedule] = 3e-4,
         buffer_size: int = 1_000_000,  # 1e6
@@ -100,6 +103,9 @@ class JumpStartIQL(IQL):
         self.guidance_timesteps = guidance_timesteps
         js_utils.check_expert_policy(expert_policy, self)
         self.expert_policy = expert_policy
+        self.use_transformer_expert = use_transformer_expert
+        self.obs_mean = obs_mean
+        self.obs_std = obs_std
 
     def _sample_action(
         self,
@@ -130,7 +136,35 @@ class JumpStartIQL(IQL):
             guide_prob = self.get_guide_probability()
             use_guide = np.random.choice([False, True], p=[1-guide_prob, guide_prob])
             if use_guide:
-                unscaled_action, _ = self.expert_policy.predict(self._last_obs, deterministic=False)
+                if self.use_transformer_expert:
+                    self.hist_ac = np.concatenate(
+                        [self.hist_ac, np.zeros((1, self.ac_dim))], axis=0
+                    )
+                    self.hist_re = np.concatenate([self.hist_re, np.zeros(1)])
+                    hist_obs = th.tensor(
+                        self.hist_obs, dtype=th.float32, device=self.device
+                    )
+                    hist_ac = th.tensor(
+                        self.hist_ac, dtype=th.float32, device=self.device
+                    )
+                    hist_re = th.tensor(
+                        self.hist_re, dtype=th.float32, device=self.device
+                    )
+                    target_return = th.tensor(
+                        self.target_return, dtype=th.float32, device=self.device
+                    )
+                    action = self.expert_policy.get_action(
+                        (hist_obs - self.obs_mean) / self.obs_std,
+                        hist_ac,
+                        hist_re,
+                        target_return=target_return,
+                    )
+                    unscaled_action = unscaled_action.detach().cpu().numpy()
+                    self.hist_ac[-1] = unscaled_action
+                else:
+                    unscaled_action, _ = self.expert_policy.predict(
+                        self._last_obs, deterministic=False
+                    )
             else:
                 # Note: when using continuous actions,
                 # we assume that the policy uses tanh to scale the action
@@ -153,7 +187,7 @@ class JumpStartIQL(IQL):
             action = buffer_action
         return action, buffer_action
     
-    def collelouts(
+    def collect_rollouts(
         self,
         env: VecEnv,
         callback: BaseCallback,
@@ -213,6 +247,16 @@ class JumpStartIQL(IQL):
 
             # Rescale and perform action
             new_obs, rewards, dones, infos = env.step(actions)
+
+            self.hist_obs = np.concatenate([self.hist_obs, new_obs], axis=0)
+            assert len(self.hist_obs.shape) == 2
+            self.hist_re[-1] = rewards
+
+            assert dones.shape == (1, )
+            if dones:
+                self.hist_obs = self._last_obs.reshape(1, self.obs_dim)
+                self.hist_ac= np.zeros((0, self.ac_dim))
+                self.hist_re = np.zeros(0)
 
             self.num_timesteps += env.num_envs
             num_collected_steps += 1

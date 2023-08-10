@@ -422,6 +422,15 @@ class BaseAlgorithm(ABC):
             assert self.env is not None
             # pytype: disable=annotation-type-mismatch
             self._last_obs = self.env.reset()  # type: ignore[assignment]
+            # Historical info within one episode
+            assert len(self.observation_space.shape) == 1
+            assert len(self.action_space.shape) == 1
+            self.obs_dim = self.observation_space.shape[0]
+            self.ac_dim = self.action_space.shape[0]
+            self.hist_obs = self._last_obs.reshape(1, self.obs_dim)
+            self.hist_ac= np.zeros((0, self.ac_dim))
+            self.hist_re = np.zeros(0)
+            self.target_return = 50.
             # pytype: enable=annotation-type-mismatch
             self._last_episode_starts = np.ones((self.env.num_envs,), dtype=bool)
             # Retrieve unnormalized observation for saving into the buffer

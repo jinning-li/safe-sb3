@@ -12,6 +12,7 @@ from stable_baselines3.js_sac import utils as js_utils
 
 def main(args):
     device = args["device"]
+    use_transformer_expert = args["use_transformer_expert"]
     env_name = args["env"]
     env = gym.make(env_name)
     env.seed(args["env_seed"])
@@ -28,16 +29,30 @@ def main(args):
         + "_lam" + str(lamb))
     if args["suffix"]:
         experiment_name += f'_{args["suffix"]}'
+    if use_transformer_expert:
+        experiment_name += '_transformer'
     tensorboard_log = os.path.join(root_dir, experiment_name)
 
-    expert_policy = js_utils.load_expert_policy(
-        model_dir=args['expert_model_dir'], env=env, device=device
-    )
+    if use_transformer_expert:
+        obs_mean, obs_std = js_utils.load_demo_stats(
+            path=args["expert_model_dir"]
+        )
+        expert_policy = js_utils.load_transformer(
+            model_dir=args['expert_model_dir'], device=device
+        )
+    else:
+        obs_mean, obs_std = None, None
+        expert_policy = js_utils.load_expert_policy(
+            model_dir=args['expert_model_dir'], env=env, device=device
+        )
 
     model = JumpStartIQL(
         "MlpPolicy",
         expert_policy,
         env,
+        obs_mean=obs_mean,
+        obs_std=obs_std,
+        use_transformer_expert=use_transformer_expert,
         tensorboard_log=tensorboard_log,
         verbose=1,
         device=device,
